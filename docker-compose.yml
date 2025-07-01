@@ -1,4 +1,4 @@
-
+services:
   stats-server:
     build: ./stats-service/server
     image: stats-server
@@ -7,7 +7,7 @@
       - "9090:9090"
     depends_on:
       - stats-db
-      - ewm-service
+      #- ewm-service
     environment:
       - EWM_MAIN_SERVICE_URL=http://ewm-service:8080
   stats-db:
@@ -24,26 +24,25 @@
       timeout: 5s
       interval: 5s
       retries: 10
-
-  ewm-service:
-    build: ewm-service
-    image: ewm-service
-    container_name: ewm-service
-    ports:
-      - "8080:8080"
-    depends_on:
-      - ewm-db
-  ewm-db:
-    image: postgres:16.1
-    container_name: ewm-postgres
-    ports:
-      - "6542:5432"
-    environment:
-      - POSTGRES_PASSWORD=ewm
-      - POSTGRES_USER=ewm
-      - POSTGRES_DB=ewm
-    healthcheck:
-      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-      timeout: 5s
-      interval: 5s
-      retries: 10
+#ewm-service:
+# build: ewm-service
+# image: ewm-service
+# container_name: ewm-service
+# ports:
+#   - "8080:8080"
+# depends_on:
+#   - ewm-db
+# ewm-db:
+#  image: postgres:16.1
+#   container_name: ewm-postgres
+#   ports:
+#     - "6542:5432"
+#   environment:
+#    - POSTGRES_PASSWORD=ewm
+#    - POSTGRES_USER=ewm
+#    - POSTGRES_DB=ewm
+#  healthcheck:
+#    test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+#    timeout: 5s
+#   interval: 5s
+#   retries: 10
