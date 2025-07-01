@@ -1,14 +1,59 @@
 services:
-  stats-server:
-    ports:
-      - "9090:9090"
-
-  stats-db:
-    image: postgres:16.1
-
-  ewm-service:
+  gateway-service:
+    build: gateway-service
+    image: gateway-service
+    container_name: gateway-service
     ports:
       - "8080:8080"
+    depends_on:
+      - stats-server
+      - ewm-service
+    environment:
+      - STATS_SERVER_URL=http://stats-server:8081
+      - EWM_MAIN_SERVICE_URL=http://ewm-service:8082
 
+  stats-server:
+    build: ./stats-service/server
+    image: stats-server
+    container_name: stats-server
+    ports:
+      - "8081:8081"
+    depends_on:
+      - stats-db
+  stats-db:
+    image: postgres:16.1
+    container_name: stats-postgres
+    ports:
+      - "6541:5432"
+    environment:
+      - POSTGRES_PASSWORD=stats
+      - POSTGRES_USER=stats
+      - POSTGRES_DB=stats
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  ewm-service:
+    build: ewm-service
+    image: ewm-service
+    container_name: ewm-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - ewm-db
   ewm-db:
     image: postgres:16.1
+    container_name: ewm-postgres
+    ports:
+      - "6542:5432"
+    environment:
+      - POSTGRES_PASSWORD=ewm
+      - POSTGRES_USER=ewm
+      - POSTGRES_DB=ewm
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
