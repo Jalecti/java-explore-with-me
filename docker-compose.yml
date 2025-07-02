@@ -8,8 +8,8 @@ services:
     depends_on:
       - stats-db
       #- ewm-service
-    environment:
-      - EWM_MAIN_SERVICE_URL=http://ewm-service:8080
+      #environment:
+      #- EWM_MAIN_SERVICE_URL=http://ewm-service:8080
   stats-db:
     image: postgres:16.1
     container_name: stats-postgres

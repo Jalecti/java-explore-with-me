@@ -20,12 +20,5 @@
         <module>common</module>
     </modules>
 
-    <dependencies>
-        <dependency>
-            <groupId>ru.practicum</groupId>
-            <artifactId>ewm-common</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-    </dependencies>
 
 </project>
