@@ -8,6 +8,7 @@ import ru.practicum.ewm.NewEndpointHitRequest;
 import ru.practicum.ewm.ViewStatsDto;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -15,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StatsServiceImpl implements StatsService {
+    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final EndpointHitRepository endpointHitRepository;
 
     @Transactional
@@ -31,9 +33,13 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    public List<ViewStatsDto> getStatsWithParams(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+    public List<ViewStatsDto> getStatsWithParams(String start, String end, List<String> uris, Boolean unique) {
+        LocalDateTime startDateTime = LocalDateTime.parse(start, FORMATTER);
+        LocalDateTime endDateTime = LocalDateTime.parse(end, FORMATTER);
+
         return unique
-                ? endpointHitRepository.getStatsUnique(start, end, uris)
-                : endpointHitRepository.getStatsAll(start,end, uris);
+                ? endpointHitRepository.getStatsUnique(startDateTime, endDateTime, uris)
+                : endpointHitRepository.getStatsAll(startDateTime, endDateTime, uris);
     }
+
 }

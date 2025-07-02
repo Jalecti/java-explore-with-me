@@ -14,7 +14,7 @@ public final class EndpointHitMapper {
         endpointHit.setApp(request.getApp());
         endpointHit.setUri(request.getUri());
         endpointHit.setIp(request.getIp());
-        endpointHit.setTimestamp(LocalDateTime.parse(request.getTimestamp()));
+        endpointHit.setTimestamp(LocalDateTime.parse(request.getTimestamp(), StatsServiceImpl.FORMATTER));
 
         return endpointHit;
     }
