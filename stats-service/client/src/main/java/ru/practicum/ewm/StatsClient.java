@@ -1,9 +1,8 @@
 package ru.practicum.ewm;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -29,7 +28,7 @@ public class StatsClient extends BaseClient {
         post("/hit", hit);
     }
 
-    public List<ViewStatsDto> getStats(String start, String end, List<String> uris, boolean unique) {
+    public List<ViewStatsDto> getStats(String start, String end, List<String> uris, Boolean unique) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromPath("/stats")
                 .queryParam("start", start)
@@ -42,15 +41,14 @@ public class StatsClient extends BaseClient {
             }
         }
 
-        URI uri = builder.build(true).toUri(); // true → кодировать параметры
+        URI uri = builder.build(true).toUri();
 
-        ResponseEntity<Object> response = rest.exchange(uri, HttpMethod.GET, null, Object.class);
-        Object body = response.getBody();
-        return convertToList(body);
-    }
-
-    private List<ViewStatsDto> convertToList(Object body) {
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.convertValue(body, new TypeReference<>() {});
+        ResponseEntity<List<ViewStatsDto>> response = rest.exchange(
+                uri,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+        );
+        return response.getBody();
     }
 }
