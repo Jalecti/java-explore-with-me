@@ -27,7 +27,7 @@ public class UserAdminController {
                                             @RequestParam (required = false, defaultValue = "0") Integer from,
                                             @RequestParam (required = false, defaultValue = "10") Integer size) {
         Pageable pageable = PageRequest.of(from / size, size);
-        return ResponseEntity.status(HttpStatus.OK).body(userService.findAllByParams(ids, pageable));
+        return ResponseEntity.status(HttpStatus.OK).body(userService.findAllByIds(ids, pageable));
     }
 
     @PostMapping

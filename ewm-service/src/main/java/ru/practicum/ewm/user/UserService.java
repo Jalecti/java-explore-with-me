@@ -10,7 +10,7 @@ public interface UserService {
 
     Collection<UserDto> findAll(Pageable pageable);
 
-    Collection<UserDto> findAllByParams(Collection<Long> ids, Pageable pageable);
+    Collection<UserDto> findAllByIds(Collection<Long> ids, Pageable pageable);
 
     UserDto findUserById(Long userId);
 
