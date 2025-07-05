@@ -9,7 +9,7 @@ import ru.practicum.ewm.exception.ConflictCategoryNameException;
 import ru.practicum.ewm.exception.NotFoundException;
 
 import java.util.Collection;
-import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -30,19 +30,21 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public Collection<CategoryDto> findAll(Pageable pageable) {
-        return List.of();
+        return categoryStorage.findAll(pageable)
+                .stream()
+                .map(CategoryMapper::mapToCategoryDto)
+                .collect(Collectors.toList());
     }
 
     @Override
     public CategoryDto findCategoryById(Long categoryId) {
-        return null;
+        return CategoryMapper.mapToCategoryDto(checkCategory(categoryId));
     }
 
     @Transactional
     @Override
     public CategoryDto update(Long categoryId, UpdateCategoryRequest updateCategoryRequest) {
         Category categoryToUpdate = checkCategory(categoryId);
-        updateCategoryRequest.setId(categoryToUpdate.getId());
         Category updatedCategory = CategoryMapper.updateCategoryFields(categoryToUpdate, updateCategoryRequest);
         updatedCategory = categoryStorage.save(updatedCategory);
         log.info("Category with ID:{} has been updated", categoryId);
