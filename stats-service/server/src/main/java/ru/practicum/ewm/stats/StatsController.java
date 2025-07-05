@@ -21,7 +21,7 @@ public class StatsController {
     private final StatsService statsService;
 
     @PostMapping("/hit")
-    public ResponseEntity<Void> saveHit(@RequestBody @Valid NewEndpointHitRequest request) {
+    public ResponseEntity<Object> saveHit(@RequestBody @Valid NewEndpointHitRequest request) {
         log.info("Saving endpointHit app={}, uri={}, ip={}, timestamp={}",
                 request.getApp(),
                 request.getUri(),
@@ -32,13 +32,13 @@ public class StatsController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<List<ViewStatsDto>> getStatsWithParams(
+    public ResponseEntity<Object> getStatsWithParams(
             @RequestParam String start,
             @RequestParam String end,
             @RequestParam(required = false) List<String> uris,
             @RequestParam(defaultValue = "false") Boolean unique) {
 
         List<ViewStatsDto> stats = statsService.getStatsWithParams(start, end, uris, unique);
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.status(HttpStatus.OK).body(stats);
     }
 }

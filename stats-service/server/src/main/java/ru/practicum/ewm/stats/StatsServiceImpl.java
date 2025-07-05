@@ -25,7 +25,7 @@ public class StatsServiceImpl implements StatsService {
     public void saveHit(NewEndpointHitRequest request) {
         EndpointHit endpointHit = EndpointHitMapper.mapToEndpointHit(request);
         endpointHitRepository.save(endpointHit);
-        log.info("Сохранено обращение к эндпоинту: id={}, app={}, uri={}, ip={}, timestamp={}",
+        log.info("Saved access to the endpoint: id={}, app={}, uri={}, ip={}, timestamp={}",
                 endpointHit.getId(),
                 endpointHit.getApp(),
                 endpointHit.getUri(),
@@ -46,8 +46,8 @@ public class StatsServiceImpl implements StatsService {
 
     private void checkDateTimes(LocalDateTime start, LocalDateTime end) {
         if (start.isAfter(end)) {
-            log.error("start={} не может быть после end={}", start, end);
-            throw new ValidationException("start=" + start + " не может быть после end=" + end);
+            log.error("start={} can't be after end={}", start, end);
+            throw new ValidationException("start=" + start + " can't be after end=" + end);
         }
     }
 
