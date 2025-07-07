@@ -60,7 +60,8 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("Category {} with ID:{} has been deleted", name, categoryId);
     }
 
-    private Category checkCategory(Long categoryId) {
+    @Override
+    public Category checkCategory(Long categoryId) {
         return categoryStorage.findById(categoryId).orElseThrow(() -> {
             log.error("Category not found with ID: {}", categoryId);
             return new NotFoundException("Category not found with ID: " + categoryId);

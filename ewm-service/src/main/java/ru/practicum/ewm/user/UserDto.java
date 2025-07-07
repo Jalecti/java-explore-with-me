@@ -10,6 +10,10 @@ import lombok.EqualsAndHashCode;
 public class UserDto {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String name;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String email;
 }

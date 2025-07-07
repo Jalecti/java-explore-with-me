@@ -1,0 +1,169 @@
+package ru.practicum.ewm.event;
+
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.category.Category;
+import ru.practicum.ewm.category.CategoryMapper;
+import ru.practicum.ewm.category.CategoryService;
+import ru.practicum.ewm.exception.*;
+import ru.practicum.ewm.user.User;
+import ru.practicum.ewm.user.UserMapper;
+import ru.practicum.ewm.user.UserService;
+
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class EventServiceImpl implements EventService {
+    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private final EventStorage eventStorage;
+    private final UserService userService;
+    private final CategoryService categoryService;
+
+    @Transactional
+    @Override
+    public EventDto save(Long userId, NewEventRequest newEventRequest) {
+        User initiator = userService.checkUser(userId);
+        Category category = categoryService.checkCategory(newEventRequest.getCategory());
+        checkEventDate(newEventRequest.getEventDate());
+        Event event = EventMapper.mapToEvent(newEventRequest, category, initiator, EventState.PENDING);
+        event = eventStorage.save(event);
+        log.info("Event {} is registered with the ID: {} by user: {}", event.getTitle(), event.getId(), initiator);
+        System.out.println(event);
+        return EventMapper.mapToEventDto(
+                event,
+                CategoryMapper.mapToCategoryDto(category),
+                UserMapper.mapToShortDto(initiator));
+    }
+
+    @Override
+    public Collection<EventShortDto> findAllByInitiatorId(Long initiatorId, Pageable pageable) {
+        User initiator = userService.checkUser(initiatorId);
+        return eventStorage.findByInitiatorId(initiatorId, pageable)
+                .stream()
+                .map(event -> EventMapper.mapToShortDto(
+                        event,
+                        CategoryMapper.mapToCategoryDto(event.getCategory()),
+                        UserMapper.mapToShortDto(initiator)))
+                .toList();
+    }
+
+    @Override
+    public EventDto findByIdAndInitiatorId(Long initiatorId, Long eventId) {
+        User initiator = userService.checkUser(initiatorId);
+        Event event = checkEventByInitiatorId(eventId, initiatorId);
+        return EventMapper.mapToEventDto(
+                event,
+                CategoryMapper.mapToCategoryDto(event.getCategory()),
+                UserMapper.mapToShortDto(initiator));
+    }
+
+    @Override
+    public Collection<EventDto> findByParams(Collection<Long> users, Collection<EventState> states,
+                                             Collection<Long> categories, LocalDateTime rangeStart,
+                                             LocalDateTime rangeEnd, Pageable pageable) {
+        checkDateTimes(rangeStart, rangeEnd);
+        return eventStorage.findByInitiatorIdInAndStateInAndCategoryIdInAndEventDateBetween(users, states, categories, rangeStart, rangeEnd, pageable)
+                .stream()
+                .map(event -> EventMapper.mapToEventDto(
+                        event,
+                        CategoryMapper.mapToCategoryDto(event.getCategory()),
+                        UserMapper.mapToShortDto(event.getInitiator())))
+                .toList();
+    }
+
+    @Transactional
+    @Override
+    public EventDto updateAdmin(Long eventId, UpdateEventAdminRequest request) {
+        Event eventToUpdate = checkEvent(eventId);
+        LocalDateTime publishedOn = eventToUpdate.getPublishedOn();
+        Category category = null;
+        EventState eventState = null;
+        if (request.getStateAction() != null) {
+            publishedOn = processStateAction(eventToUpdate.getState(), request.getStateAction());
+            if (publishedOn != null) {
+                eventState = EventState.PUBLISHED;
+            }
+        }
+        if (request.getEventDate() != null && publishedOn != null) {
+            checkEventDateBeforePublishing(request.getEventDate(), publishedOn);
+        }
+        if (request.getCategory() != null) {
+            category = categoryService.checkCategory(request.getCategory());
+        }
+        Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, eventState, publishedOn);
+        updatedEvent = eventStorage.save(updatedEvent);
+        log.info("Event has been updated with ID:{}", eventId);
+        System.out.println(updatedEvent);
+        return EventMapper.mapToEventDto(
+                updatedEvent,
+                CategoryMapper.mapToCategoryDto(updatedEvent.getCategory()),
+                UserMapper.mapToShortDto(updatedEvent.getInitiator()));
+    }
+
+    private LocalDateTime processStateAction(EventState eventState, StateAction stateAction) {
+        if (stateAction.equals(StateAction.PUBLISH_EVENT)) {
+            if (!eventState.equals(EventState.PENDING)) {
+                log.error("An event can only be published if it is in the waiting state for publication. eventState={}, stateAction={}",
+                        eventState, stateAction);
+                throw new ConflictStateActionException("An event can only be published if it is in the waiting state for publication. eventState="
+                        + eventState + ", stateAction=" + stateAction);
+            }
+            return LocalDateTime.now();
+        } else if (stateAction.equals(StateAction.REJECT_EVENT)) {
+            if (eventState.equals(EventState.PUBLISHED)) {
+                log.error("An event can only be rejected if it has not been published yet. eventState={}, stateAction={}",
+                        eventState, stateAction);
+                throw new ConflictStateActionException("An event can only be rejected if it has not been published yet. eventState="
+                        + eventState + ", stateAction=" + stateAction);
+            }
+        }
+        return null;
+    }
+
+    private void checkEventDateBeforePublishing(LocalDateTime eventDate, LocalDateTime publishedOn) {
+        if (eventDate.isBefore(publishedOn.plusHours(1))) {
+            log.error("The start date of the event to be modified must be no earlier than 1 hour from the publication date. " +
+                    "Specified eventDate:{}, publishedOn:{}", eventDate, publishedOn);
+            throw new ConflictEventDateException("The start date of the event to be modified must be no earlier than 1 hour from the publication date. " +
+                    "Specified eventDate:" + eventDate + ", publishedOn:" + publishedOn);
+        }
+    }
+
+    private Event checkEvent(Long eventId) {
+        return eventStorage.findById(eventId).orElseThrow(() -> {
+            log.error("Event with ID:{} was not found", eventId);
+            return new NotFoundException("Event with ID:" + eventId + " was not found");
+        });
+    }
+
+    private Event checkEventByInitiatorId(Long eventId, Long initiatorId) {
+        return eventStorage.findByIdAndInitiatorId(eventId, initiatorId).orElseThrow(() -> {
+            log.error("Event with ID:{} was not found by initiatorID:{}", eventId, initiatorId);
+            return new NotFoundException("Event with ID:" + eventId + " was not found by initiatorID:" + initiatorId);
+        });
+    }
+
+    private void checkEventDate(LocalDateTime eventDate) {
+        if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
+            log.error("The event date cannot be earlier than 2 hours from the current moment. Requested event date={}", eventDate);
+            throw new ValidationException("The event date cannot be earlier than 2 hours from the current moment. Requested event date=" + eventDate);
+        }
+    }
+
+    private void checkDateTimes(LocalDateTime start, LocalDateTime end) {
+        if (start.isAfter(end)) {
+            log.error("start={} can't be after end={}", start, end);
+            throw new ValidationException("start=" + start + " can't be after end=" + end);
+        }
+    }
+}
