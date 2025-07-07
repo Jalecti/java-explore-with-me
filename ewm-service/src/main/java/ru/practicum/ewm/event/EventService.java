@@ -17,4 +17,10 @@ public interface EventService {
                                       LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
 
     EventDto updateAdmin(Long eventId, UpdateEventAdminRequest request);
+
+    Event checkEvent(Long eventId);
+
+    void incrementConfirmedRequests(Long eventId);
+
+    void decrementConfirmedRequests(Long eventId);
 }

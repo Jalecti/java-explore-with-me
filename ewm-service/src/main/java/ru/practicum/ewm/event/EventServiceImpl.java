@@ -38,7 +38,6 @@ public class EventServiceImpl implements EventService {
         Event event = EventMapper.mapToEvent(newEventRequest, category, initiator, EventState.PENDING);
         event = eventStorage.save(event);
         log.info("Event {} is registered with the ID: {} by user: {}", event.getTitle(), event.getId(), initiator);
-        System.out.println(event);
         return EventMapper.mapToEventDto(
                 event,
                 CategoryMapper.mapToCategoryDto(category),
@@ -103,7 +102,6 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, eventState, publishedOn);
         updatedEvent = eventStorage.save(updatedEvent);
         log.info("Event has been updated with ID:{}", eventId);
-        System.out.println(updatedEvent);
         return EventMapper.mapToEventDto(
                 updatedEvent,
                 CategoryMapper.mapToCategoryDto(updatedEvent.getCategory()),
@@ -139,11 +137,26 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    private Event checkEvent(Long eventId) {
+    @Override
+    public Event checkEvent(Long eventId) {
         return eventStorage.findById(eventId).orElseThrow(() -> {
             log.error("Event with ID:{} was not found", eventId);
             return new NotFoundException("Event with ID:" + eventId + " was not found");
         });
+    }
+
+    @Transactional
+    @Override
+    public void incrementConfirmedRequests(Long eventId) {
+        log.info("Incrementing confirmed requests for eventId:{}", eventId);
+        eventStorage.incrementConfirmedRequests(eventId);
+    }
+
+    @Transactional
+    @Override
+    public void decrementConfirmedRequests(Long eventId) {
+        log.info("Decrementing confirmed requests for eventId:{}", eventId);
+        eventStorage.decrementConfirmedRequests(eventId);
     }
 
     private Event checkEventByInitiatorId(Long eventId, Long initiatorId) {

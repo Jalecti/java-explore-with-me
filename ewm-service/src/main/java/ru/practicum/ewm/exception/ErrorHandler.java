@@ -81,6 +81,16 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleConflictParticipationRequest(final ConflictParticipationRequestException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT,
+                "Error with the participation request.",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleForbidden(final ForbiddenException e) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN,
