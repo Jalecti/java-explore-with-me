@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.event.EventService;
 import ru.practicum.ewm.event.EventState;
-import ru.practicum.ewm.event.UpdateEventAdminRequest;
+import ru.practicum.ewm.event.UpdateEventRequest;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -41,7 +41,7 @@ public class EventAdminController {
 
     @PatchMapping("/{eventId}")
     public ResponseEntity<Object> update(@PathVariable Long eventId,
-                                         @RequestBody @Valid UpdateEventAdminRequest request) {
+                                         @RequestBody @Valid UpdateEventRequest request) {
         log.info("Updating event with ID:{}, body:{}", eventId, request);
         return ResponseEntity.status(HttpStatus.OK).body(eventService.updateAdmin(eventId, request));
     }

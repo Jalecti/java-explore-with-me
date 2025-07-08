@@ -36,21 +36,16 @@ public interface EventStorage extends JpaRepository<Event, Long> {
     Optional<Event> findByIdAndState(Long eventId, EventState state);
 
     @Query("SELECT e FROM Event e WHERE e.state = 'PUBLISHED' " +
-            "AND (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
-            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%'))) " +
-            "AND (:categories IS NULL OR e.category.id IN :categories) " +
-            "AND (:paid IS NULL OR e.paid = :paid) " +
-            "AND (CAST(:rangeStart AS timestamp) IS NULL OR e.eventDate >= :rangeStart) " +
-            "AND (CAST(:rangeEnd AS timestamp) IS NULL OR e.eventDate <= :rangeEnd) " +
-            "AND (:onlyAvailable = false OR e.participantLimit = 0 OR e.confirmedRequests < e.participantLimit)")
+            "AND (?1 IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', ?1, '%')) " +
+            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', ?1, '%'))) " +
+            "AND (?2 IS NULL OR e.category.id IN ?2) " +
+            "AND (?3 IS NULL OR e.paid = ?3) " +
+            "AND (CAST(?4 AS timestamp) IS NULL OR e.eventDate >= ?4) " +
+            "AND (CAST(?5 AS timestamp) IS NULL OR e.eventDate <= ?5) " +
+            "AND (?6 = false OR e.participantLimit = 0 OR e.confirmedRequests < e.participantLimit)")
     @EntityGraph(value = "Event.forMapping")
-    Page<Event> findPublishedByParams(@Param("text") String text,
-                                      @Param("categories") Collection<Long> categories,
-                                      @Param("paid") Boolean paid,
-                                      @Param("rangeStart") LocalDateTime rangeStart,
-                                      @Param("rangeEnd") LocalDateTime rangeEnd,
-                                      @Param("onlyAvailable") Boolean onlyAvailable,
-                                      Pageable pageable);
+    Page<Event> findPublishedByParams(String text, Collection<Long> categories, Boolean paid, LocalDateTime rangeStart,
+                                      LocalDateTime rangeEnd, Boolean onlyAvailable, Pageable pageable);
 
     @Modifying
     @Query("UPDATE Event as e " +
@@ -63,4 +58,10 @@ public interface EventStorage extends JpaRepository<Event, Long> {
             "SET e.confirmedRequests = e.confirmedRequests - 1 " +
             "WHERE e.id = ?1")
     void decrementConfirmedRequests(Long eventId);
+
+    @Modifying
+    @Query("UPDATE Event as e " +
+            "SET e.confirmedRequests = e.confirmedRequests + ?2 " +
+            "WHERE e.id = ?1")
+    void addConfirmedRequests(Long eventId, Long confirmedRequests);
 }

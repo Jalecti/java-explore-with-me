@@ -11,6 +11,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.event.EventService;
 import ru.practicum.ewm.event.NewEventRequest;
+import ru.practicum.ewm.event.UpdateEventRequest;
+import ru.practicum.ewm.participation.ParticipationRequestService;
+import ru.practicum.ewm.participation.ParticipationRequestStatusUpdateRequest;
 
 
 @RestController
@@ -20,6 +23,7 @@ import ru.practicum.ewm.event.NewEventRequest;
 @Validated
 public class EventPrivateController {
     private final EventService eventService;
+    private final ParticipationRequestService participationRequestService;
 
     @PostMapping
     public ResponseEntity<Object> create(@PathVariable Long userId,
@@ -39,5 +43,25 @@ public class EventPrivateController {
     @GetMapping("/{eventId}")
     public ResponseEntity<Object> findByIdAndUserId(@PathVariable Long userId, @PathVariable Long eventId) {
         return ResponseEntity.status(HttpStatus.OK).body(eventService.findByIdAndInitiatorId(userId, eventId));
+    }
+
+    @PatchMapping("/{eventId}")
+    public ResponseEntity<Object> update(@PathVariable Long userId,
+                                         @PathVariable Long eventId,
+                                         @RequestBody @Valid UpdateEventRequest request) {
+        log.info("Updating event with ID:{}, body:{} by userId:{}", eventId, request, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(eventService.updatePrivate(userId, eventId, request));
+    }
+
+    @GetMapping("/{eventId}/requests")
+    public ResponseEntity<Object> findPartRequestsByInitiatorId(@PathVariable Long userId, @PathVariable Long eventId) {
+        return ResponseEntity.status(HttpStatus.OK).body(participationRequestService.findPartRequestsByUserId(userId, eventId));
+    }
+
+    @PatchMapping("/{eventId}/requests")
+    public ResponseEntity<Object> updatePartRequestsByInitiatorId(@PathVariable Long userId, @PathVariable Long eventId,
+                                                                  @RequestBody ParticipationRequestStatusUpdateRequest request) {
+        log.info("Updating participation requests {} by userId:{} in eventId:{}", request, userId, eventId);
+        return ResponseEntity.status(HttpStatus.OK).body(participationRequestService.updatePartRequestsByInitiatorId(userId, eventId, request));
     }
 }

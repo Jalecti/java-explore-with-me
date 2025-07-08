@@ -69,7 +69,7 @@ public final class EventMapper {
         return eventShortDto;
     }
 
-    public static Event updateEventFields(Event event, UpdateEventAdminRequest request, Category category, EventState eventState, LocalDateTime publishedOn) {
+    public static Event updateEventFields(Event event, UpdateEventRequest request, Category category, EventState eventState, LocalDateTime publishedOn) {
         if (request.hasAnnotation()) event.setAnnotation(request.getAnnotation());
         if (request.hasCategory() && category != null) event.setCategory(category);
         if (request.hasDescription()) event.setDescription(request.getDescription());

@@ -3,17 +3,22 @@ package ru.practicum.ewm.participation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.event.Event;
 import ru.practicum.ewm.event.EventService;
 import ru.practicum.ewm.event.EventState;
+import ru.practicum.ewm.exception.ConflictInitiatorException;
 import ru.practicum.ewm.exception.ConflictParticipationRequestException;
+import ru.practicum.ewm.exception.ConflictParticipationRequestLimitException;
 import ru.practicum.ewm.exception.NotFoundException;
 import ru.practicum.ewm.user.User;
 import ru.practicum.ewm.user.UserService;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +35,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         User requester = userService.checkUser(userId);
         Event event = eventService.checkEvent(eventId);
         checkParticipationRequestByUserIdAndEventId(userId, eventId);
-        checkEventInitiator(requester, event);
+        checkEventInitiatorForParticipate(requester, event);
         checkEventPublishedState(event);
         checkEventParticipationLimit(event);
 
@@ -63,6 +68,64 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 .toList();
     }
 
+    @Override
+    public Collection<ParticipationRequestDto> findPartRequestsByUserId(Long userId, Long eventId) {
+        User initiator = userService.checkUser(userId);
+        Event event = eventService.checkEvent(eventId);
+        checkEventInitiator(initiator, event);
+        return participationRequestStorage.findAllByEventId(eventId)
+                .stream()
+                .map(ParticipationRequestMapper::mapToDto)
+                .toList();
+    }
+
+    @Transactional
+    @Override
+    public ParticipationRequestStatusUpdateResult updatePartRequestsByInitiatorId(Long userId, Long eventId,
+                                                                                  ParticipationRequestStatusUpdateRequest request) {
+        User initiator = userService.checkUser(userId);
+        Event event = eventService.checkEvent(eventId);
+        checkEventInitiator(initiator, event);
+
+        if (!event.getRequestModeration() || event.getParticipantLimit() == 0) return null;
+
+        List<ParticipationRequest> requestsToUpdate = participationRequestStorage.findAllById(request.getRequestIds());
+
+        List<ParticipationRequest> confirmed = new ArrayList<>();
+        List<ParticipationRequest> rejected = new ArrayList<>();
+
+        Long alreadyConfirmed = event.getConfirmedRequests();
+        Integer limit = event.getParticipantLimit();
+
+        for (ParticipationRequest partRequest : requestsToUpdate) {
+            checkPendingStatus(partRequest.getStatus());
+            if (request.getStatus() == ParticipationRequestStatus.CONFIRMED) {
+                if (alreadyConfirmed < limit) {
+                    partRequest.setStatus(ParticipationRequestStatus.CONFIRMED);
+                    confirmed.add(partRequest);
+                    alreadyConfirmed++;
+                } else {
+                    partRequest.setStatus(ParticipationRequestStatus.REJECTED);
+                    rejected.add(partRequest);
+                }
+            } else if (request.getStatus() == ParticipationRequestStatus.REJECTED) {
+                partRequest.setStatus(ParticipationRequestStatus.REJECTED);
+                rejected.add(partRequest);
+            }
+        }
+
+        participationRequestStorage.saveAll(requestsToUpdate);
+
+        if (!confirmed.isEmpty()) {
+            eventService.addConfirmedRequests(eventId, (long) confirmed.size());
+        }
+
+        List<ParticipationRequestDto> confirmedDto = confirmed.stream().map(ParticipationRequestMapper::mapToDto).toList();
+        List<ParticipationRequestDto> rejectedDto = rejected.stream().map(ParticipationRequestMapper::mapToDto).toList();
+
+        return new ParticipationRequestStatusUpdateResult(confirmedDto, rejectedDto);
+    }
+
     @Transactional
     @Override
     public ParticipationRequestDto cancelRequest(Long userId, Long requestId) {
@@ -76,6 +139,13 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         log.info("Participation request has been canceled with the ID:{} by requesterId:{}",
                 participationRequest.getId(), userId);
         return ParticipationRequestMapper.mapToDto(participationRequest);
+    }
+
+    private void checkPendingStatus(ParticipationRequestStatus status) {
+        if (!ParticipationRequestStatus.PENDING.equals(status)) {
+            log.error("The status can only be changed for applications that are in a pending status. Current status:{}", status);
+            throw new ConflictParticipationRequestException("The status can only be changed for applications that are in a pending status. Current status:" + status);
+        }
     }
 
     private ParticipationRequest checkParticipationRequest(Long requestId) {
@@ -92,7 +162,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
     }
 
-    private void checkEventInitiator(User requester, Event event) {
+    private void checkEventInitiatorForParticipate(User requester, Event event) {
         if (requester.getId().equals(event.getInitiator().getId())) {
             log.error("The initiator of the event cannot add a request to participate in his event. requesterId:{}, initiatorId:{}",
                     requester.getId(), event.getInitiator().getId());
@@ -111,7 +181,21 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     private void checkEventParticipationLimit(Event event) {
         if (!(event.getConfirmedRequests() < event.getParticipantLimit())) {
             log.error("The event has reached the limit of participation requests. Limit:{}", event.getParticipantLimit());
+            throw new ConflictParticipationRequestLimitException("The event has reached the limit of participation requests. Limit:" + event.getParticipantLimit());
+        }
+    }
+
+    private void checkEventParticipationLimit(Long currConfirmed, Event event) {
+        if (!(currConfirmed < event.getParticipantLimit())) {
+            log.error("The event has reached the limit of participation requests. Limit:{}", event.getParticipantLimit());
             throw new ConflictParticipationRequestException("The event has reached the limit of participation requests. Limit:" + event.getParticipantLimit());
+        }
+    }
+
+    private void checkEventInitiator(User initiator, Event event) {
+        if (!initiator.getId().equals(event.getInitiator().getId())) {
+            log.error("UserId:{} is not the initiator of the eventId:{}", initiator.getId(), event.getId());
+            throw new ConflictInitiatorException("UserId:" + initiator.getId() + " is not the initiator of the eventId:" + event.getId());
         }
     }
 }

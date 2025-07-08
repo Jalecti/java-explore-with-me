@@ -8,4 +8,9 @@ public interface ParticipationRequestService {
     Collection<ParticipationRequestDto> findByUserId(Long userId);
 
     ParticipationRequestDto cancelRequest(Long userId, Long requestId);
+
+    Collection<ParticipationRequestDto> findPartRequestsByUserId(Long userId, Long eventId);
+
+    ParticipationRequestStatusUpdateResult updatePartRequestsByInitiatorId(Long userId, Long eventId,
+                                                                           ParticipationRequestStatusUpdateRequest request);
 }

@@ -81,10 +81,40 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleConflictEventState(final ConflictEventStateException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT,
+                "Error with the specified event state.",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleConflictInitiator(final ConflictInitiatorException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT,
+                "Error with the specified event initiator.",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleConflictParticipationRequest(final ConflictParticipationRequestException e) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.CONFLICT,
                 "Error with the participation request.",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleConflictParticipationRequestLimit(final ConflictParticipationRequestLimitException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT,
+                "Error with the participation request limit.",
                 e.getMessage()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
