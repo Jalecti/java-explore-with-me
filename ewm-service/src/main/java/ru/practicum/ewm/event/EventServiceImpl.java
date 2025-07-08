@@ -16,15 +16,14 @@ import ru.practicum.ewm.user.UserService;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
-    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final EventStorage eventStorage;
     private final UserService userService;
     private final CategoryService categoryService;
@@ -64,6 +63,29 @@ public class EventServiceImpl implements EventService {
                 event,
                 CategoryMapper.mapToCategoryDto(event.getCategory()),
                 UserMapper.mapToShortDto(initiator));
+    }
+
+    @Override
+    public EventDto findPublishedById(Long eventId) {
+        Event event = checkPublishedEventById(eventId);
+        return EventMapper.mapToEventDto(
+                event,
+                CategoryMapper.mapToCategoryDto(event.getCategory()),
+                UserMapper.mapToShortDto(event.getInitiator()));
+    }
+
+    @Override
+    public Collection<EventShortDto> findPublishedByParams(String text, Collection<Long> categories, Boolean paid,
+                                                           LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                                           Boolean onlyAvailable, Pageable pageable) {
+        checkDateTimes(rangeStart, rangeEnd);
+        return eventStorage.findPublishedByParams(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
+                .stream()
+                .map(event -> EventMapper.mapToShortDto(
+                        event,
+                        CategoryMapper.mapToCategoryDto(event.getCategory()),
+                        UserMapper.mapToShortDto(event.getInitiator())))
+                .toList();
     }
 
     @Override
@@ -163,6 +185,13 @@ public class EventServiceImpl implements EventService {
         return eventStorage.findByIdAndInitiatorId(eventId, initiatorId).orElseThrow(() -> {
             log.error("Event with ID:{} was not found by initiatorID:{}", eventId, initiatorId);
             return new NotFoundException("Event with ID:" + eventId + " was not found by initiatorID:" + initiatorId);
+        });
+    }
+
+    private Event checkPublishedEventById(Long eventId) {
+        return eventStorage.findByIdAndState(eventId, EventState.PUBLISHED).orElseThrow(() -> {
+            log.error("Published event with ID:{} was not found", eventId);
+            return new NotFoundException("Published event with ID:" + eventId + " was not found");
         });
     }
 

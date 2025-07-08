@@ -13,6 +13,11 @@ public interface EventService {
 
     EventDto findByIdAndInitiatorId(Long initiatorId, Long eventId);
 
+    EventDto findPublishedById(Long eventId);
+
+    Collection<EventShortDto> findPublishedByParams(String text, Collection<Long> categories, Boolean paid, LocalDateTime rangeStart,
+                                                    LocalDateTime rangeEnd, Boolean onlyAvailable, Pageable pageable);
+
     Collection<EventDto> findByParams(Collection<Long> users, Collection<EventState> states, Collection<Long> categories,
                                       LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
 
