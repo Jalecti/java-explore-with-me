@@ -13,7 +13,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.event.EventService;
 import ru.practicum.ewm.event.EventSortType;
-import ru.practicum.ewm.event.Location;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

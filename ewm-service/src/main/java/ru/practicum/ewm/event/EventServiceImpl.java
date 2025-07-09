@@ -9,7 +9,6 @@ import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.category.CategoryMapper;
 import ru.practicum.ewm.category.CategoryService;
 import ru.practicum.ewm.exception.*;
-import ru.practicum.ewm.participation.ParticipationRequestDto;
 import ru.practicum.ewm.user.User;
 import ru.practicum.ewm.user.UserMapper;
 import ru.practicum.ewm.user.UserService;
@@ -19,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -191,6 +192,24 @@ public class EventServiceImpl implements EventService {
             log.error("Event with ID:{} was not found", eventId);
             return new NotFoundException("Event with ID:" + eventId + " was not found");
         });
+    }
+
+    @Override
+    public List<Event> checkEventInIdList(List<Long> eventIds) {
+        List<Event> events = eventStorage.findAllById(eventIds);
+        Set<Long> foundedIds = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toSet());
+
+        List<Long> notFoundedIds = eventIds.stream()
+                .filter(id -> !foundedIds.contains(id))
+                .toList();
+
+        if (!notFoundedIds.isEmpty()) {
+            log.error("No events with ID found: {}", notFoundedIds);
+            throw new NotFoundException("No events with ID found: " + notFoundedIds);
+        }
+        return events;
     }
 
     @Transactional

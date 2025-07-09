@@ -3,7 +3,6 @@ package ru.practicum.ewm.participation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.event.Event;
@@ -182,13 +181,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         if (!(event.getConfirmedRequests() < event.getParticipantLimit())) {
             log.error("The event has reached the limit of participation requests. Limit:{}", event.getParticipantLimit());
             throw new ConflictParticipationRequestLimitException("The event has reached the limit of participation requests. Limit:" + event.getParticipantLimit());
-        }
-    }
-
-    private void checkEventParticipationLimit(Long currConfirmed, Event event) {
-        if (!(currConfirmed < event.getParticipantLimit())) {
-            log.error("The event has reached the limit of participation requests. Limit:{}", event.getParticipantLimit());
-            throw new ConflictParticipationRequestException("The event has reached the limit of participation requests. Limit:" + event.getParticipantLimit());
         }
     }
 

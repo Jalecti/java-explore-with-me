@@ -2,10 +2,10 @@ package ru.practicum.ewm.event;
 
 
 import org.springframework.data.domain.Pageable;
-import ru.practicum.ewm.participation.ParticipationRequestDto;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 public interface EventService {
     EventDto save(Long userId, NewEventRequest newEventRequest);
@@ -27,6 +27,8 @@ public interface EventService {
     EventDto updatePrivate(Long userId, Long eventId, UpdateEventRequest request);
 
     Event checkEvent(Long eventId);
+
+    List<Event> checkEventInIdList(List<Long> eventIds);
 
     void incrementConfirmedRequests(Long eventId);
 
