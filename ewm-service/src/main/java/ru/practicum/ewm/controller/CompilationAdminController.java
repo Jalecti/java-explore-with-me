@@ -9,6 +9,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.compilation.CompilationService;
 import ru.practicum.ewm.compilation.NewCompilationRequest;
+import ru.practicum.ewm.compilation.UpdateCompilationRequest;
+
 
 @RestController
 @RequestMapping(path = "/admin/compilations")
@@ -29,5 +31,12 @@ public class CompilationAdminController {
         log.info("deleting a compilation with ID:{}", compId);
         compilationService.delete(compId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @PatchMapping("/{compId}")
+    public ResponseEntity<Object> update(@PathVariable Long compId,
+                                         @RequestBody @Valid UpdateCompilationRequest request) {
+        log.info("Updating compilation with ID:{}, body:{}", compId, request);
+        return ResponseEntity.status(HttpStatus.OK).body(compilationService.update(compId, request));
     }
 }

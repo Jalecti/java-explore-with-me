@@ -21,7 +21,7 @@ public class CompilationPublicController {
 
     @GetMapping
     public ResponseEntity<Object> findCompilations(
-            @RequestParam Boolean pinned,
+            @RequestParam(required = false) Boolean pinned,
             @RequestParam(required = false, defaultValue = "0") Integer from,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
 

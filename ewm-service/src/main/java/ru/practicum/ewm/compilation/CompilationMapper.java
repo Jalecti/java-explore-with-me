@@ -25,7 +25,7 @@ public final class CompilationMapper {
         dto.setId(compilation.getId());
         dto.setPinned(compilation.getPinned());
         dto.setTitle(compilation.getTitle());
-        dto.setEvents(events);
+        if (events != null) dto.setEvents(events);
 
         return dto;
     }

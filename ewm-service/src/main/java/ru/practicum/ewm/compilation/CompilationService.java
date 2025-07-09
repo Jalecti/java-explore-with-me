@@ -12,4 +12,6 @@ public interface CompilationService {
     Collection<CompilationDto> findCompilations(Boolean pinned, Pageable pageable);
 
     CompilationDto findById(Long compId);
+
+    CompilationDto update(Long compId, UpdateCompilationRequest request);
 }

@@ -14,6 +14,7 @@ import ru.practicum.ewm.exception.NotFoundException;
 import ru.practicum.ewm.user.UserMapper;
 
 import org.springframework.data.domain.Pageable;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -35,9 +36,9 @@ public class CompilationServiceImpl implements CompilationService {
         List<EventShortDto> eventsShorts = events
                 .stream()
                 .map(event -> EventMapper.mapToShortDto(
-                         event,
-                         CategoryMapper.mapToCategoryDto(event.getCategory()),
-                         UserMapper.mapToShortDto(event.getInitiator()))).toList();
+                        event,
+                        CategoryMapper.mapToCategoryDto(event.getCategory()),
+                        UserMapper.mapToShortDto(event.getInitiator()))).toList();
         return CompilationMapper.mapToDto(compilation, eventsShorts);
     }
 
@@ -78,6 +79,29 @@ public class CompilationServiceImpl implements CompilationService {
                         UserMapper.mapToShortDto(event.getInitiator())
                 )).toList();
         return CompilationMapper.mapToDto(compilation, shortDtos);
+    }
+
+    @Transactional
+    @Override
+    public CompilationDto update(Long compId, UpdateCompilationRequest request) {
+        Compilation compilationToUpdate = checkCompilation(compId);
+        List<Event> events = request.hasEvents()
+                ? eventService.checkEventInIdList(request.getEvents())
+                : null;
+        Compilation updatedCompilation = CompilationMapper.updateCompilationFields(compilationToUpdate, request, events);
+        updatedCompilation = compilationStorage.save(updatedCompilation);
+        log.info("Compilation has been updated with ID:{}", compId);
+
+        List<EventShortDto> shortDtos = events == null
+                ? null
+                : events
+                .stream()
+                .map(event -> EventMapper.mapToShortDto(
+                        event,
+                        CategoryMapper.mapToCategoryDto(event.getCategory()),
+                        UserMapper.mapToShortDto(event.getInitiator())
+                )).toList();
+        return CompilationMapper.mapToDto(updatedCompilation, shortDtos);
     }
 
     private Compilation checkCompilation(Long compId) {
