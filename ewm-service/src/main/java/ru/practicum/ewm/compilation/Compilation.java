@@ -3,10 +3,7 @@ package ru.practicum.ewm.compilation;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import ru.practicum.ewm.event.Event;
 
 import java.util.List;
@@ -31,10 +28,10 @@ import java.util.List;
         )
 })
 @Table(name = "compilations")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(of = {"id"})
 public class Compilation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -3,10 +3,7 @@ package ru.practicum.ewm.event;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.user.User;
@@ -24,10 +21,10 @@ import java.time.LocalDateTime;
         )
 })
 @Table(name = "events")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(of = {"id"})
 public class Event {
 
     @Id
