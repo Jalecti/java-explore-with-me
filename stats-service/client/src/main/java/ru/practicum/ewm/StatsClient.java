@@ -11,10 +11,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 public class StatsClient extends BaseClient {
+    private final String baseUrl;
 
     public StatsClient(@Value("${stats-service.url}") String baseUrl,
                        RestTemplateBuilder builder) {
@@ -22,17 +27,23 @@ public class StatsClient extends BaseClient {
                 .rootUri(baseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build());
+        this.baseUrl = baseUrl;
     }
 
     public void saveHit(NewEndpointHitRequest hit) {
         post("/hit", hit);
     }
 
-    public List<ViewStatsDto> getStats(String start, String end, List<String> uris, Boolean unique) {
+    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        String encodedStart = URLEncoder.encode(formatter.format(start), StandardCharsets.UTF_8);
+        String encodedEnd = URLEncoder.encode(formatter.format(end), StandardCharsets.UTF_8);
+
         UriComponentsBuilder builder = UriComponentsBuilder
-                .fromPath("/stats")
-                .queryParam("start", start)
-                .queryParam("end", end)
+                .fromUriString(baseUrl + "/stats")
+                .queryParam("start", encodedStart)
+                .queryParam("end", encodedEnd)
                 .queryParam("unique", unique);
 
         if (uris != null && !uris.isEmpty()) {
@@ -51,4 +62,5 @@ public class StatsClient extends BaseClient {
         );
         return response.getBody();
     }
+
 }
