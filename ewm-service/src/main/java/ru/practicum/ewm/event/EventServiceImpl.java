@@ -1,10 +1,14 @@
 package ru.practicum.ewm.event;
 
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.NewEndpointHitRequest;
+import ru.practicum.ewm.StatsClient;
+import ru.practicum.ewm.ViewStatsDto;
 import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.category.CategoryMapper;
 import ru.practicum.ewm.category.CategoryService;
@@ -16,8 +20,10 @@ import ru.practicum.ewm.user.UserService;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,9 +32,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
+    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final EventStorage eventStorage;
     private final UserService userService;
     private final CategoryService categoryService;
+    private final StatsClient statsClient;
 
     @Transactional
     @Override
@@ -67,9 +75,13 @@ public class EventServiceImpl implements EventService {
                 UserMapper.mapToShortDto(initiator));
     }
 
+    @Transactional
     @Override
-    public EventDto findPublishedById(Long eventId) {
+    public EventDto findPublishedById(HttpServletRequest request, Long eventId) {
         Event event = checkPublishedEventById(eventId);
+        logHit(request);
+        Long viewsFromStats = getUniqueEventViewsFromStatsServer(request, event);
+        if (viewsFromStats - event.getViews() == 1) incrementViews(eventId);
         return EventMapper.mapToEventDto(
                 event,
                 CategoryMapper.mapToCategoryDto(event.getCategory()),
@@ -77,10 +89,13 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public Collection<EventShortDto> findPublishedByParams(String text, Collection<Long> categories, Boolean paid,
+    public Collection<EventShortDto> findPublishedByParams(HttpServletRequest request,
+                                                           String text, Collection<Long> categories, Boolean paid,
                                                            LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                                            Boolean onlyAvailable, Pageable pageable) {
-        checkDateTimes(rangeStart, rangeEnd);
+
+        if (rangeEnd != null) checkDateTimes(rangeStart, rangeEnd);
+        logHit(request);
         return eventStorage.findPublishedByParams(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
                 .stream()
                 .map(event -> EventMapper.mapToShortDto(
@@ -94,8 +109,9 @@ public class EventServiceImpl implements EventService {
     public Collection<EventDto> findByParams(Collection<Long> users, Collection<EventState> states,
                                              Collection<Long> categories, LocalDateTime rangeStart,
                                              LocalDateTime rangeEnd, Pageable pageable) {
-        checkDateTimes(rangeStart, rangeEnd);
-        return eventStorage.findByInitiatorIdInAndStateInAndCategoryIdInAndEventDateBetween(users, states, categories, rangeStart, rangeEnd, pageable)
+
+        if (rangeEnd != null) checkDateTimes(rangeStart, rangeEnd);
+        return eventStorage.findByParams(users, states, categories, rangeStart, rangeEnd, pageable)
                 .stream()
                 .map(event -> EventMapper.mapToEventDto(
                         event,
@@ -104,17 +120,23 @@ public class EventServiceImpl implements EventService {
                 .toList();
     }
 
+    @Override
+    public Optional<Event> findFirstByCategoryId(Long catId) {
+        return eventStorage.findFirstByCategoryId(catId);
+    }
+
     @Transactional
     @Override
     public EventDto updateAdmin(Long eventId, UpdateEventRequest request) {
         Event eventToUpdate = checkEvent(eventId);
         LocalDateTime publishedOn = eventToUpdate.getPublishedOn();
         Category category = null;
-        EventState eventState = null;
+        EventState newEventState = null;
         if (request.getStateAction() != null) {
-            publishedOn = processStateAction(eventToUpdate.getState(), request.getStateAction());
-            if (publishedOn != null) {
-                eventState = EventState.PUBLISHED;
+            newEventState = processStateAction(eventToUpdate.getState(), request.getStateAction());
+            if (newEventState != null) {
+                if (newEventState == EventState.PUBLISHED) publishedOn = LocalDateTime.now();
+                if (newEventState == EventState.CANCELED) publishedOn = null;
             }
         }
         if (request.getEventDate() != null && publishedOn != null) {
@@ -123,7 +145,7 @@ public class EventServiceImpl implements EventService {
         if (request.getCategory() != null) {
             category = categoryService.checkCategory(request.getCategory());
         }
-        Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, eventState, publishedOn);
+        Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, newEventState, publishedOn);
         updatedEvent = eventStorage.save(updatedEvent);
         log.info("Event has been updated with ID:{}", eventId);
         return EventMapper.mapToEventDto(
@@ -147,6 +169,7 @@ public class EventServiceImpl implements EventService {
             category = categoryService.checkCategory(request.getCategory());
         }
         if (StateAction.CANCEL_REVIEW.equals(request.getStateAction())) eventState = EventState.CANCELED;
+        if (StateAction.SEND_TO_REVIEW.equals(request.getStateAction())) eventState = EventState.PENDING;
         Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, eventState, null);
         updatedEvent = eventStorage.save(updatedEvent);
         log.info("Event has been updated with ID:{} by userId:{}", eventId, userId);
@@ -157,7 +180,7 @@ public class EventServiceImpl implements EventService {
     }
 
 
-    private LocalDateTime processStateAction(EventState eventState, StateAction stateAction) {
+    private EventState processStateAction(EventState eventState, StateAction stateAction) {
         if (stateAction.equals(StateAction.PUBLISH_EVENT)) {
             if (!eventState.equals(EventState.PENDING)) {
                 log.error("An event can only be published if it is in the waiting state for publication. eventState={}, stateAction={}",
@@ -165,7 +188,7 @@ public class EventServiceImpl implements EventService {
                 throw new ConflictStateActionException("An event can only be published if it is in the waiting state for publication. eventState="
                         + eventState + ", stateAction=" + stateAction);
             }
-            return LocalDateTime.now();
+            return EventState.PUBLISHED;
         } else if (stateAction.equals(StateAction.REJECT_EVENT)) {
             if (eventState.equals(EventState.PUBLISHED)) {
                 log.error("An event can only be rejected if it has not been published yet. eventState={}, stateAction={}",
@@ -173,6 +196,7 @@ public class EventServiceImpl implements EventService {
                 throw new ConflictStateActionException("An event can only be rejected if it has not been published yet. eventState="
                         + eventState + ", stateAction=" + stateAction);
             }
+            return EventState.CANCELED;
         }
         return null;
     }
@@ -210,6 +234,11 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("No events with ID found: " + notFoundedIds);
         }
         return events;
+    }
+
+    private void incrementViews(Long eventId) {
+        log.info("Incrementing views for eventId:{}", eventId);
+        eventStorage.incrementViews(eventId);
     }
 
     @Transactional
@@ -266,5 +295,23 @@ public class EventServiceImpl implements EventService {
             log.error("You can only change cancelled events or events that are awaiting moderation. Event state:{}", state);
             throw new ConflictEventStateException("You can only change cancelled events or events that are awaiting moderation. Event state:" + state);
         }
+    }
+
+    private void logHit(HttpServletRequest request) {
+        statsClient.saveHit(new NewEndpointHitRequest(
+                "ewm-main-service",
+                request.getRequestURI(),
+                request.getRemoteAddr(),
+                LocalDateTime.now().format(FORMATTER)
+        ));
+    }
+
+    private Long getUniqueEventViewsFromStatsServer(HttpServletRequest request, Event event) {
+        List<String> uris = List.of(request.getRequestURI());
+        List<ViewStatsDto> stats = statsClient.getStats(
+                event.getCreatedOn(),
+                LocalDateTime.now(),
+                uris, true);
+        return stats.isEmpty() ? 0 : stats.getFirst().getHits();
     }
 }

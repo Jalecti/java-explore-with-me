@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.category.CategoryService;
+import ru.practicum.ewm.category.CategoryUtilService;
 import ru.practicum.ewm.category.NewCategoryRequest;
 import ru.practicum.ewm.category.UpdateCategoryRequest;
 
@@ -18,6 +19,7 @@ import ru.practicum.ewm.category.UpdateCategoryRequest;
 @Validated
 public class CategoryAdminController {
     private final CategoryService categoryService;
+    private final CategoryUtilService categoryUtilService;
 
     @PostMapping
     public ResponseEntity<Object> save(@Valid @RequestBody NewCategoryRequest newCategoryRequest) {
@@ -28,7 +30,7 @@ public class CategoryAdminController {
     @DeleteMapping("/{catId}")
     public ResponseEntity<Object> delete(@PathVariable("catId") Long catId) {
         log.info("deleting a category with ID:{}", catId);
-        categoryService.delete(catId);
+        categoryUtilService.delete(catId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 

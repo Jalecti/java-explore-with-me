@@ -1,7 +1,6 @@
 package ru.practicum.ewm.compilation;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NewCompilationRequest {
-    @NotNull
+
     private List<Long> events;
 
     private Boolean pinned = false;

@@ -9,6 +9,8 @@ import ru.practicum.ewm.exception.ConflictCategoryNameException;
 import ru.practicum.ewm.exception.NotFoundException;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,19 +47,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryDto update(Long categoryId, UpdateCategoryRequest updateCategoryRequest) {
         Category categoryToUpdate = checkCategory(categoryId);
+        if (!categoryToUpdate.getName().equals(updateCategoryRequest.getName())) checkCategoryName(updateCategoryRequest.getName());
         Category updatedCategory = CategoryMapper.updateCategoryFields(categoryToUpdate, updateCategoryRequest);
         updatedCategory = categoryStorage.save(updatedCategory);
         log.info("Category with ID:{} has been updated", categoryId);
         return CategoryMapper.mapToCategoryDto(updatedCategory);
-    }
-
-    @Transactional
-    @Override
-    public void delete(Long categoryId) {
-        Category categoryToDelete = checkCategory(categoryId);
-        String name = categoryToDelete.getName();
-        categoryStorage.deleteById(categoryId);
-        log.info("Category {} with ID:{} has been deleted", name, categoryId);
     }
 
     @Override
@@ -73,5 +67,23 @@ public class CategoryServiceImpl implements CategoryService {
             log.error("Category with the specified name has already been registered: {}", name);
             throw new ConflictCategoryNameException("Category with the specified name has already been registered: " + name);
         }
+    }
+
+    @Override
+    public List<Category> checkCategoryInIdList(Collection<Long> catIds) {
+        List<Category> cats = categoryStorage.findAllById(catIds);
+        Set<Long> foundedIds = cats.stream()
+                .map(Category::getId)
+                .collect(Collectors.toSet());
+
+        List<Long> notFoundedIds = catIds.stream()
+                .filter(id -> !foundedIds.contains(id))
+                .toList();
+
+        if (!notFoundedIds.isEmpty()) {
+            log.error("No categories with ID found: {}", notFoundedIds);
+            throw new NotFoundException("No categories with ID found: " + notFoundedIds);
+        }
+        return cats;
     }
 }

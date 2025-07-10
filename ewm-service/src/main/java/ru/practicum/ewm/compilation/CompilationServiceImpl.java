@@ -29,11 +29,15 @@ public class CompilationServiceImpl implements CompilationService {
     @Transactional
     @Override
     public CompilationDto save(NewCompilationRequest request) {
-        List<Event> events = eventService.checkEventInIdList(request.getEvents());
+        List<Event> events = request.getEvents() == null
+                ? null
+                : eventService.checkEventInIdList(request.getEvents());
         Compilation compilation = CompilationMapper.mapToCompilation(request, events);
         compilation = compilationStorage.save(compilation);
         log.info("Compilation {} is registered with the ID: {}", compilation.getTitle(), compilation.getId());
-        List<EventShortDto> eventsShorts = events
+        List<EventShortDto> eventsShorts = events == null
+                ? null
+                : events
                 .stream()
                 .map(event -> EventMapper.mapToShortDto(
                         event,

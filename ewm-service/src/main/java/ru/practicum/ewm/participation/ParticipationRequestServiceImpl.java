@@ -36,13 +36,14 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         checkParticipationRequestByUserIdAndEventId(userId, eventId);
         checkEventInitiatorForParticipate(requester, event);
         checkEventPublishedState(event);
-        checkEventParticipationLimit(event);
+        if (event.getParticipantLimit() != 0) checkEventParticipationLimit(event);
 
         ParticipationRequest participationRequest = new ParticipationRequest();
         participationRequest.setRequester(requester);
         participationRequest.setEvent(event);
 
-        ParticipationRequestStatus status = event.getRequestModeration()
+        System.out.println(event);
+        ParticipationRequestStatus status = event.getRequestModeration() && event.getParticipantLimit() != 0
                 ? ParticipationRequestStatus.PENDING
                 : ParticipationRequestStatus.CONFIRMED;
 
@@ -98,15 +99,15 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         for (ParticipationRequest partRequest : requestsToUpdate) {
             checkPendingStatus(partRequest.getStatus());
+
             if (request.getStatus() == ParticipationRequestStatus.CONFIRMED) {
-                if (alreadyConfirmed < limit) {
-                    partRequest.setStatus(ParticipationRequestStatus.CONFIRMED);
-                    confirmed.add(partRequest);
-                    alreadyConfirmed++;
-                } else {
-                    partRequest.setStatus(ParticipationRequestStatus.REJECTED);
-                    rejected.add(partRequest);
+                if (alreadyConfirmed >= limit) {
+                    throw new ConflictParticipationRequestLimitException("The participation request cannot be confirmed:" +
+                            " the limit of participants for the event has been reached.");
                 }
+                partRequest.setStatus(ParticipationRequestStatus.CONFIRMED);
+                confirmed.add(partRequest);
+                alreadyConfirmed++;
             } else if (request.getStatus() == ParticipationRequestStatus.REJECTED) {
                 partRequest.setStatus(ParticipationRequestStatus.REJECTED);
                 rejected.add(partRequest);

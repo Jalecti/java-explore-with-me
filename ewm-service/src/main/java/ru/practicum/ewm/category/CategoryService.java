@@ -3,6 +3,7 @@ package ru.practicum.ewm.category;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface CategoryService {
     CategoryDto save(NewCategoryRequest newCategoryRequest);
@@ -13,7 +14,7 @@ public interface CategoryService {
 
     CategoryDto update(Long categoryId, UpdateCategoryRequest updateCategoryRequest);
 
-    void delete(Long categoryId);
-
     Category checkCategory(Long categoryId);
+
+    List<Category> checkCategoryInIdList(Collection<Long> catIds);
 }

@@ -26,14 +26,17 @@ public class EventAdminController {
     private final EventService eventService;
 
     @GetMapping
-    public ResponseEntity<Object> findByParams(@RequestParam Collection<Long> users,
-                                               @RequestParam Collection<EventState> states,
-                                               @RequestParam Collection<Long> categories,
-                                               @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
-                                               @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
+    public ResponseEntity<Object> findByParams(@RequestParam(required = false) Collection<Long> users,
+                                               @RequestParam(required = false) Collection<EventState> states,
+                                               @RequestParam(required = false) Collection<Long> categories,
+                                               @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
+                                               @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
                                                @RequestParam(required = false, defaultValue = "0") Integer from,
                                                @RequestParam(required = false, defaultValue = "10") Integer size) {
         Pageable pageable = PageRequest.of(from / size, size);
+        if (rangeStart == null) {
+            rangeStart = LocalDateTime.now();
+        }
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(eventService.findByParams(users, states, categories, rangeStart, rangeEnd, pageable));

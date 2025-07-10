@@ -33,7 +33,16 @@ public interface EventStorage extends JpaRepository<Event, Long> {
     Optional<Event> findByIdAndInitiatorId(Long eventId, Long initiatorId);
 
     @EntityGraph(value = "Event.forMapping")
-    Page<Event> findByInitiatorIdInAndStateInAndCategoryIdInAndEventDateBetween(Collection<Long> users, Collection<EventState> states,
+    Optional<Event> findFirstByCategoryId(Long catId);
+
+    @Query("SELECT e FROM Event e WHERE " +
+            "(?1 IS NULL OR e.initiator.id IN ?1) AND " +
+            "(?2 IS NULL OR e.state IN ?2) AND " +
+            "(?3 IS NULL OR e.category.id IN ?3) AND " +
+            "(CAST(?4 AS timestamp) IS NULL OR e.eventDate >= ?4) AND " +
+            "(CAST(?5 AS timestamp) IS NULL OR e.eventDate <= ?5)")
+    @EntityGraph(value = "Event.forMapping")
+    Page<Event> findByParams(Collection<Long> users, Collection<EventState> states,
                            Collection<Long> categories, LocalDateTime rangeStart,
                            LocalDateTime rangeEnd, Pageable pageable);
 
@@ -51,6 +60,12 @@ public interface EventStorage extends JpaRepository<Event, Long> {
     @EntityGraph(value = "Event.forMapping")
     Page<Event> findPublishedByParams(String text, Collection<Long> categories, Boolean paid, LocalDateTime rangeStart,
                                       LocalDateTime rangeEnd, Boolean onlyAvailable, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Event as e " +
+            "SET e.views = e.views + 1 " +
+            "WHERE e.id = ?1")
+    void incrementViews(Long eventId);
 
     @Modifying
     @Query("UPDATE Event as e " +

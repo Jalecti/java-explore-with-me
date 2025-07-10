@@ -1,6 +1,7 @@
 package ru.practicum.ewm.controller;
 
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +28,7 @@ public class EventPublicController {
 
     @GetMapping
     public ResponseEntity<Object> findPublishedByParams(
+            HttpServletRequest request,
             @RequestParam(required = false) String text,
             @RequestParam(required = false) Collection<Long> categories,
             @RequestParam(required = false) Boolean paid,
@@ -36,20 +38,29 @@ public class EventPublicController {
             @RequestParam(required = false) EventSortType sort,
             @RequestParam(required = false, defaultValue = "0") Integer from,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
+
+
+        if (text == null || text.isBlank()) {
+            text = "";
+        }
+
         String sortBy = "id";
-        if (sort.equals(EventSortType.EVENT_DATE)) sortBy = "eventDate";
-        if (sort.equals(EventSortType.VIEWS)) sortBy = "views";
+
+        if (EventSortType.EVENT_DATE.equals(sort)) sortBy = "eventDate";
+        if (EventSortType.VIEWS.equals(sort)) sortBy = "views";
+
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(sortBy));
         if (rangeStart == null) {
             rangeStart = LocalDateTime.now();
         }
-
         return ResponseEntity.status(HttpStatus.OK).body(eventService.findPublishedByParams(
-                text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable));
+                request, text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable));
     }
 
     @GetMapping("/{eventId}")
-    public ResponseEntity<Object> findPublishedById(@PathVariable Long eventId) {
-        return ResponseEntity.status(HttpStatus.OK).body(eventService.findPublishedById(eventId));
+    public ResponseEntity<Object> findPublishedById(HttpServletRequest request,
+                                                    @PathVariable Long eventId) {
+        return ResponseEntity.status(HttpStatus.OK).body(eventService.findPublishedById(request, eventId));
     }
+
 }
