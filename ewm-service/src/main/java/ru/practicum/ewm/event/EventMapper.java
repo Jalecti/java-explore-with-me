@@ -4,10 +4,12 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.category.CategoryDto;
+import ru.practicum.ewm.event.comment.CommentDto;
 import ru.practicum.ewm.user.User;
 import ru.practicum.ewm.user.UserShortDto;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class EventMapper {
@@ -30,7 +32,7 @@ public final class EventMapper {
         return event;
     }
 
-    public static EventDto mapToEventDto(Event event, CategoryDto categoryDto, UserShortDto initiator) {
+    public static EventDto mapToEventDto(Event event, CategoryDto categoryDto, UserShortDto initiator, Collection<CommentDto> comments) {
         EventDto eventDto = new EventDto();
 
         eventDto.setId(event.getId());
@@ -50,10 +52,12 @@ public final class EventMapper {
         eventDto.setPublishedOn(event.getPublishedOn());
         eventDto.setCreatedOn(event.getCreatedOn());
 
+        eventDto.setComments(comments);
+
         return eventDto;
     }
 
-    public static EventShortDto mapToShortDto(Event event, CategoryDto categoryDto, UserShortDto initiator) {
+    public static EventShortDto mapToShortDto(Event event, CategoryDto categoryDto, UserShortDto initiator, Collection<CommentDto> comments) {
         EventShortDto eventShortDto = new EventShortDto();
 
         eventShortDto.setId(event.getId());
@@ -65,6 +69,8 @@ public final class EventMapper {
         eventShortDto.setViews(event.getViews());
         eventShortDto.setPaid(event.getPaid());
         eventShortDto.setEventDate(event.getEventDate());
+
+        eventShortDto.setComments(comments);
 
         return eventShortDto;
     }

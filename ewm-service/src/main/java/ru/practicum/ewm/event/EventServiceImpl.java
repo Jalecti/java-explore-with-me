@@ -4,6 +4,7 @@ package ru.practicum.ewm.event;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.NewEndpointHitRequest;
@@ -12,6 +13,9 @@ import ru.practicum.ewm.ViewStatsDto;
 import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.category.CategoryMapper;
 import ru.practicum.ewm.category.CategoryService;
+import ru.practicum.ewm.event.comment.CommentMapper;
+import ru.practicum.ewm.event.comment.CommentStorage;
+import ru.practicum.ewm.event.comment.CommentDto;
 import ru.practicum.ewm.exception.*;
 import ru.practicum.ewm.user.User;
 import ru.practicum.ewm.user.UserMapper;
@@ -21,11 +25,9 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class EventServiceImpl implements EventService {
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final EventStorage eventStorage;
+    private final CommentStorage commentStorage;
     private final UserService userService;
     private final CategoryService categoryService;
     private final StatsClient statsClient;
@@ -50,29 +53,28 @@ public class EventServiceImpl implements EventService {
         return EventMapper.mapToEventDto(
                 event,
                 CategoryMapper.mapToCategoryDto(category),
-                UserMapper.mapToShortDto(initiator));
+                UserMapper.mapToShortDto(initiator),
+                new ArrayList<>());
     }
 
     @Override
     public Collection<EventShortDto> findAllByInitiatorId(Long initiatorId, Pageable pageable) {
-        User initiator = userService.checkUser(initiatorId);
-        return eventStorage.findByInitiatorId(initiatorId, pageable)
-                .stream()
-                .map(event -> EventMapper.mapToShortDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(initiator)))
-                .toList();
+        userService.checkUser(initiatorId);
+        Page<Event> events = eventStorage.findByInitiatorId(initiatorId, pageable);
+        return getMappedCollectionEventShortDto(events.stream());
+    }
+
+    private Map<Long, List<CommentDto>> findAllCommentsByEventIds(Collection<Long> eventIds) {
+        return commentStorage.findByEventIdIn(eventIds).stream()
+                .map(CommentMapper::mapToCommentDto)
+                .collect(Collectors.groupingBy(CommentDto::getEventId));
     }
 
     @Override
     public EventDto findByIdAndInitiatorId(Long initiatorId, Long eventId) {
-        User initiator = userService.checkUser(initiatorId);
+        userService.checkUser(initiatorId);
         Event event = checkEventByInitiatorId(eventId, initiatorId);
-        return EventMapper.mapToEventDto(
-                event,
-                CategoryMapper.mapToCategoryDto(event.getCategory()),
-                UserMapper.mapToShortDto(initiator));
+        return getMappedEventDto(event);
     }
 
     @Transactional
@@ -82,10 +84,7 @@ public class EventServiceImpl implements EventService {
         logHit(request);
         Long viewsFromStats = getUniqueEventViewsFromStatsServer(request, event);
         if (viewsFromStats - event.getViews() == 1) incrementViews(eventId);
-        return EventMapper.mapToEventDto(
-                event,
-                CategoryMapper.mapToCategoryDto(event.getCategory()),
-                UserMapper.mapToShortDto(event.getInitiator()));
+        return getMappedEventDto(event);
     }
 
     @Override
@@ -96,13 +95,8 @@ public class EventServiceImpl implements EventService {
 
         if (rangeEnd != null) checkDateTimes(rangeStart, rangeEnd);
         logHit(request);
-        return eventStorage.findPublishedByParams(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
-                .stream()
-                .map(event -> EventMapper.mapToShortDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(event.getInitiator())))
-                .toList();
+        Page<Event> events = eventStorage.findPublishedByParams(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable);
+        return getMappedCollectionEventShortDto(events.stream());
     }
 
     @Override
@@ -111,13 +105,8 @@ public class EventServiceImpl implements EventService {
                                              LocalDateTime rangeEnd, Pageable pageable) {
 
         if (rangeEnd != null) checkDateTimes(rangeStart, rangeEnd);
-        return eventStorage.findByParams(users, states, categories, rangeStart, rangeEnd, pageable)
-                .stream()
-                .map(event -> EventMapper.mapToEventDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(event.getInitiator())))
-                .toList();
+        Page<Event> events = eventStorage.findByParams(users, states, categories, rangeStart, rangeEnd, pageable);
+        return getMappedCollectionEventDto(events.stream());
     }
 
     @Override
@@ -148,10 +137,7 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, newEventState, publishedOn);
         updatedEvent = eventStorage.save(updatedEvent);
         log.info("Event has been updated with ID:{}", eventId);
-        return EventMapper.mapToEventDto(
-                updatedEvent,
-                CategoryMapper.mapToCategoryDto(updatedEvent.getCategory()),
-                UserMapper.mapToShortDto(updatedEvent.getInitiator()));
+        return getMappedEventDto(updatedEvent);
     }
 
     @Transactional
@@ -173,10 +159,7 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = EventMapper.updateEventFields(eventToUpdate, request, category, eventState, null);
         updatedEvent = eventStorage.save(updatedEvent);
         log.info("Event has been updated with ID:{} by userId:{}", eventId, userId);
-        return EventMapper.mapToEventDto(
-                updatedEvent,
-                CategoryMapper.mapToCategoryDto(updatedEvent.getCategory()),
-                UserMapper.mapToShortDto(updatedEvent.getInitiator()));
+        return getMappedEventDto(updatedEvent);
     }
 
 
@@ -314,4 +297,55 @@ public class EventServiceImpl implements EventService {
                 uris, true);
         return stats.isEmpty() ? 0 : stats.getFirst().getHits();
     }
+
+    private Collection<CommentDto> findAllCommentsByEventId(Long eventId) {
+        return commentStorage.findByEventId(eventId)
+                .stream()
+                .map(CommentMapper::mapToCommentDto)
+                .toList();
+    }
+
+    private EventDto getMappedEventDto(Event event) {
+        return EventMapper.mapToEventDto(
+                event,
+                CategoryMapper.mapToCategoryDto(event.getCategory()),
+                UserMapper.mapToShortDto(event.getInitiator()),
+                findAllCommentsByEventId(event.getId()));
+    }
+
+    private Collection<EventDto> getMappedCollectionEventDto(Stream<Event> events) {
+        List<Event> eventList = events.toList();
+        List<Long> eventIds = eventList.stream().map(Event::getId).toList();
+        Map<Long, List<CommentDto>> commentsMap = findAllCommentsByEventIds(eventIds);
+        return eventList
+                .stream()
+                .map(event -> {
+                    List<CommentDto> comments = commentsMap.getOrDefault(event.getId(), List.of());
+                    return EventMapper.mapToEventDto(
+                            event,
+                            CategoryMapper.mapToCategoryDto(event.getCategory()),
+                            UserMapper.mapToShortDto(event.getInitiator()),
+                            comments);
+                })
+                .toList();
+    }
+
+    @Override
+    public Collection<EventShortDto> getMappedCollectionEventShortDto(Stream<Event> events) {
+        List<Event> eventList = events.toList();
+        List<Long> eventIds = eventList.stream().map(Event::getId).toList();
+        Map<Long, List<CommentDto>> commentsMap = findAllCommentsByEventIds(eventIds);
+        return eventList
+                .stream()
+                .map(event -> {
+                    List<CommentDto> comments = commentsMap.getOrDefault(event.getId(), List.of());
+                    return EventMapper.mapToShortDto(
+                            event,
+                            CategoryMapper.mapToCategoryDto(event.getCategory()),
+                            UserMapper.mapToShortDto(event.getInitiator()),
+                            comments);
+                })
+                .toList();
+    }
+
 }

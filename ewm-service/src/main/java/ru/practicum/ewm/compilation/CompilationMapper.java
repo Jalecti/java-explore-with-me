@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import ru.practicum.ewm.event.Event;
 import ru.practicum.ewm.event.EventShortDto;
 
+import java.util.Collection;
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -19,7 +20,7 @@ public final class CompilationMapper {
         return compilation;
     }
 
-    public static CompilationDto mapToDto(Compilation compilation, List<EventShortDto> events) {
+    public static CompilationDto mapToDto(Compilation compilation, Collection<EventShortDto> events) {
         CompilationDto dto = new CompilationDto();
 
         dto.setId(compilation.getId());

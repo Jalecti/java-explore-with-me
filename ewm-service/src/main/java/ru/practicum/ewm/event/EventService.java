@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public interface EventService {
     EventDto save(Long userId, NewEventRequest newEventRequest);
@@ -39,4 +40,7 @@ public interface EventService {
     void decrementConfirmedRequests(Long eventId);
 
     void addConfirmedRequests(Long eventId, Long confirmedRequests);
+
+    Collection<EventShortDto> getMappedCollectionEventShortDto(Stream<Event> events);
+
 }
