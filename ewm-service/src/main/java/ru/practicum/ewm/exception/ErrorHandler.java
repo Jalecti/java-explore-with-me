@@ -132,6 +132,16 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleConflictAuthorComment(final ConflictAuthorCommentException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT,
+                "Error with the author comment",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleForbidden(final ForbiddenException e) {
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN,

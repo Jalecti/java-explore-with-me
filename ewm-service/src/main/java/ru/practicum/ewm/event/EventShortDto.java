@@ -5,9 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import ru.practicum.ewm.category.CategoryDto;
+import ru.practicum.ewm.event.comment.CommentDto;
 import ru.practicum.ewm.user.UserShortDto;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 
 @Data
 @EqualsAndHashCode(of = {"id"})
@@ -39,5 +41,8 @@ public class EventShortDto {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Collection<CommentDto> comments;
 
 }

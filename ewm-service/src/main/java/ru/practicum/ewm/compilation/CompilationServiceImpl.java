@@ -5,13 +5,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ewm.category.CategoryMapper;
 import ru.practicum.ewm.event.Event;
-import ru.practicum.ewm.event.EventMapper;
 import ru.practicum.ewm.event.EventService;
 import ru.practicum.ewm.event.EventShortDto;
 import ru.practicum.ewm.exception.NotFoundException;
-import ru.practicum.ewm.user.UserMapper;
 
 import org.springframework.data.domain.Pageable;
 
@@ -35,14 +32,9 @@ public class CompilationServiceImpl implements CompilationService {
         Compilation compilation = CompilationMapper.mapToCompilation(request, events);
         compilation = compilationStorage.save(compilation);
         log.info("Compilation {} is registered with the ID: {}", compilation.getTitle(), compilation.getId());
-        List<EventShortDto> eventsShorts = events == null
+        Collection<EventShortDto> eventsShorts = events == null
                 ? null
-                : events
-                .stream()
-                .map(event -> EventMapper.mapToShortDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(event.getInitiator()))).toList();
+                : eventService.getMappedCollectionEventShortDto(events.stream());
         return CompilationMapper.mapToDto(compilation, eventsShorts);
     }
 
@@ -60,13 +52,8 @@ public class CompilationServiceImpl implements CompilationService {
         return compilationStorage.findByPinned(pinned, pageable)
                 .stream()
                 .map(compilation -> {
-                    List<EventShortDto> shortDtos = compilation.getEvents()
-                            .stream()
-                            .map(event -> EventMapper.mapToShortDto(
-                                    event,
-                                    CategoryMapper.mapToCategoryDto(event.getCategory()),
-                                    UserMapper.mapToShortDto(event.getInitiator())
-                            )).toList();
+                    Collection<EventShortDto> shortDtos = eventService.getMappedCollectionEventShortDto(compilation.getEvents()
+                            .stream());
                     return CompilationMapper.mapToDto(compilation, shortDtos);
                 })
                 .toList();
@@ -75,13 +62,8 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public CompilationDto findById(Long compId) {
         Compilation compilation = checkCompilation(compId);
-        List<EventShortDto> shortDtos = compilation.getEvents()
-                .stream()
-                .map(event -> EventMapper.mapToShortDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(event.getInitiator())
-                )).toList();
+        Collection<EventShortDto> shortDtos = eventService.getMappedCollectionEventShortDto(compilation.getEvents()
+                .stream());
         return CompilationMapper.mapToDto(compilation, shortDtos);
     }
 
@@ -96,15 +78,9 @@ public class CompilationServiceImpl implements CompilationService {
         updatedCompilation = compilationStorage.save(updatedCompilation);
         log.info("Compilation has been updated with ID:{}", compId);
 
-        List<EventShortDto> shortDtos = events == null
+        Collection<EventShortDto> shortDtos = events == null
                 ? null
-                : events
-                .stream()
-                .map(event -> EventMapper.mapToShortDto(
-                        event,
-                        CategoryMapper.mapToCategoryDto(event.getCategory()),
-                        UserMapper.mapToShortDto(event.getInitiator())
-                )).toList();
+                : eventService.getMappedCollectionEventShortDto(events.stream());
         return CompilationMapper.mapToDto(updatedCompilation, shortDtos);
     }
 

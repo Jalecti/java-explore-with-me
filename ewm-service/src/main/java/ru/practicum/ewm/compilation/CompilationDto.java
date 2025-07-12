@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import ru.practicum.ewm.event.EventShortDto;
 
-import java.util.List;
+import java.util.Collection;
 
 @Data
 @EqualsAndHashCode(of = {"id"})
@@ -17,5 +17,5 @@ public class CompilationDto {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String title;
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private List<EventShortDto> events;
+    private Collection<EventShortDto> events;
 }
