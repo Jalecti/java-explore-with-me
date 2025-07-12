@@ -3,6 +3,8 @@ package ru.practicum.ewm.event;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
+import ru.practicum.ewm.event.comment.CommentDto;
+import ru.practicum.ewm.event.comment.NewCommentRequest;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -42,5 +44,9 @@ public interface EventService {
     void addConfirmedRequests(Long eventId, Long confirmedRequests);
 
     Collection<EventShortDto> getMappedCollectionEventShortDto(Stream<Event> events);
+
+    CommentDto comment(Long authorId, Long eventId, NewCommentRequest request);
+
+    void deleteComment(Long authorId, Long commentId, Boolean isAdmin);
 
 }

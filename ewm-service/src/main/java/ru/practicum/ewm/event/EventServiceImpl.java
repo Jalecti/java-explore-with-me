@@ -13,9 +13,7 @@ import ru.practicum.ewm.ViewStatsDto;
 import ru.practicum.ewm.category.Category;
 import ru.practicum.ewm.category.CategoryMapper;
 import ru.practicum.ewm.category.CategoryService;
-import ru.practicum.ewm.event.comment.CommentMapper;
-import ru.practicum.ewm.event.comment.CommentStorage;
-import ru.practicum.ewm.event.comment.CommentDto;
+import ru.practicum.ewm.event.comment.*;
 import ru.practicum.ewm.exception.*;
 import ru.practicum.ewm.user.User;
 import ru.practicum.ewm.user.UserMapper;
@@ -162,6 +160,26 @@ public class EventServiceImpl implements EventService {
         return getMappedEventDto(updatedEvent);
     }
 
+    @Transactional
+    @Override
+    public CommentDto comment(Long authorId, Long eventId, NewCommentRequest request) {
+        User author = userService.checkUser(authorId);
+        Event event = checkPublishedEventById(eventId);
+        Comment comment = CommentMapper.mapToComment(request, author, event);
+        comment = commentStorage.save(comment);
+        log.info("Comment:{} is saved with the ID:{} by authorId:{} for eventId:{}", comment.getText(), comment.getId(), authorId, eventId);
+        return CommentMapper.mapToCommentDto(comment);
+    }
+
+    @Transactional
+    @Override
+    public void deleteComment(Long authorId, Long commentId, Boolean isAdmin) {
+        if (!isAdmin) userService.checkUser(authorId);
+        Comment comment = checkComment(commentId);
+        if (!isAdmin) checkCommentAuthor(comment, authorId);
+        commentStorage.deleteById(commentId);
+        log.info("Comment:{} is deleted with the ID:{}", comment.getText(), comment.getId());
+    }
 
     private EventState processStateAction(EventState eventState, StateAction stateAction) {
         if (stateAction.equals(StateAction.PUBLISH_EVENT)) {
@@ -199,6 +217,20 @@ public class EventServiceImpl implements EventService {
             log.error("Event with ID:{} was not found", eventId);
             return new NotFoundException("Event with ID:" + eventId + " was not found");
         });
+    }
+
+    private Comment checkComment(Long commentId) {
+        return commentStorage.findById(commentId).orElseThrow(() -> {
+            log.error("Comment with ID:{} was not found", commentId);
+            return new NotFoundException("Comment with ID:" + commentId + " was not found");
+        });
+    }
+
+    private void checkCommentAuthor(Comment comment, Long authorId) {
+        if (!comment.getAuthor().getId().equals(authorId)) {
+            log.error("User with ID:{}  is not the author of the comment with ID:{}", authorId, comment.getId());
+            throw new ConflictAuthorCommentException("User with ID:" + authorId + " is not the author of the comment with ID:" + comment.getId());
+        }
     }
 
     @Override
